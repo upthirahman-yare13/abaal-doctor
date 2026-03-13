@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="so">
+<head>
+    <meta charset="UTF-8">
+    <title>Abaal Hospital | Professional Medical Report</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --bg: #0f172a;
+            --glass: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+            --blue: #2563eb; 
+        }
+
+        body {
+            background: radial-gradient(circle at top left, #1e1b4b, #0f172a);
+            color: #f8fafc;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 900px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        h2 {
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+
+        .section-title {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin: 25px 0 15px;
+            border-left: 4px solid var(--primary);
+            padding-left: 10px;
+        }
+
+        .grid-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        input, textarea {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: white;
+            padding: 14px;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        .btn-action {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 14px;
+            color: white;
+            padding: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 30px;
+            transition: transform 0.2s;
+            font-size: 16px;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.5);
+        }
+
+        /* Print Styles */
+        #prescription-print { display: none; padding: 30px; border: 1px solid #ccc; background: white; color: black; line-height: 1.4; }
+        .print-header { text-align: center; border-bottom: 3px double #000; margin-bottom: 20px; padding-bottom: 10px; }
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .info-table td { padding: 5px; border-bottom: 1px solid #eee; font-size: 14px; color: black; }
+        .signature-area { display: flex; justify-content: space-between; margin-top: 60px; }
+        .sig-box { text-align: center; width: 200px; border-top: 1px solid #000; padding-top: 5px; color: black; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #prescription-print, #prescription-print * { visibility: visible; }
+            #prescription-print { display: block; position: absolute; left: 0; top: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glass-card" id="doctor-interface">
+        <h2>Abaal Hospital Assessment</h2>
+        
+        <div id="active-patient" style="background: rgba(16, 185, 129, 0.2); padding: 15px; border-radius: 12px; margin-bottom: 15px; font-weight: bold; color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3);">
+            Sugaya bukaan ka socda Reception-ka...
+        </div>
+
+        <div class="section-title">Bukaan-socodka (Patient Vitals)</div>
+        <div class="grid-inputs">
+            <input type="number" id="pAge" placeholder="Da'da">
+            <input type="text" id="pSex" placeholder="Jinsiga">
+            <input type="text" id="pWeight" placeholder="Miisaanka (kg)">
+            <input type="text" id="pBP" placeholder="Dhiig-karka (BP)">
+            <input type="text" id="pTemp" placeholder="Heerkulka (°C)">
+            <input type="text" id="pPulse" placeholder="Pulse Rate">
+        </div>
+
+        <div class="section-title">Xogta Masuulka (Guardian)</div>
+        <div class="grid-inputs">
+            <input type="text" id="gName" placeholder="Magaca Masuulka">
+            <input type="tel" id="gPhone" placeholder="Tel-ka Masuulka">
+            <input type="text" id="gRelation" placeholder="Xiriirka">
+        </div>
+        
+        <div class="section-title">Clinical Findings</div>
+        <textarea id="pDiagnosis" placeholder="Diagnosis (Cudurka la helay)..." rows="2"></textarea>
+        <textarea id="pMedication" placeholder="Treatment / Medications (Daawooyinka)..." rows="4"></textarea>
+        <textarea id="pNote" placeholder="Doctor's Advice / Follow up (Talo)..." rows="2"></textarea>
+        
+        <button class="btn-action" onclick="generateReport()">PRINT MEDICAL REPORT</button>
+    </div>
+
+    <div id="prescription-print">
+        <div class="print-header">
+            <h1 style="margin:0; color: #2563eb;">ABAAL SPECIALIST HOSPITAL</h1>
+            <p style="margin:5px;">Mogadishu, Somalia | Official Medical Report</p>
+        </div>
+
+        <table class="info-table">
+            <tr>
+                <td><strong>Patient:</strong> <span id="prName"></span></td>
+                <td><strong>Ticket No:</strong> <span id="prRef"></span></td>
+                <td><strong>Date:</strong> <span id="prDate"></span></td>
+            </tr>
+            <tr>
+                <td><strong>Age/Sex:</strong> <span id="prAgeSex"></span></td>
+                <td><strong>Weight:</strong> <span id="prWeight"></span></td>
+                <td><strong>B.P:</strong> <span id="prBP"></span></td>
+            </tr>
+        </table>
+
+        <div style="margin-top:20px; color: black;">
+            <h3 style="border-bottom: 1px solid #000;">DIAGNOSIS & FINDINGS</h3>
+            <p id="prDiag" style="min-height: 40px;"></p>
+
+            <h3 style="border-bottom: 1px solid #000;">PRESCRIPTION (Rx)</h3>
+            <p id="prMeds" style="min-height: 150px; white-space: pre-wrap; font-size: 17px;"></p>
+
+            <h3 style="border-bottom: 1px solid #000;">ADVICE & FOLLOW UP</h3>
+            <p id="prNote"></p>
+        </div>
+
+        <div class="signature-area">
+            <div class="sig-box">
+                <p><strong>Patient Signature</strong></p>
+            </div>
+            <div class="sig-box">
+                <p><strong>Doctor's Signature & Stamp</strong></p>
+                <p id="docNameDisplay" style="font-size: 12px;"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ABAAL HOSPITAL FIREBASE CONFIG
+        const firebaseConfig = {
+          apiKey: "AIzaSyDgSP70OKTshwdhvlmQyZZ744Ytum9cYc0",
+          authDomain: "abaal-manager.firebaseapp.com",
+          databaseURL: "https://abaal-manager-default-rtdb.firebaseio.com",
+          projectId: "abaal-manager",
+          storageBucket: "abaal-manager.firebasestorage.app",
+          messagingSenderId: "215027284128",
+          appId: "1:215027284128:web:72f70ebd5b24b39fb2f1c5",
+          measurementId: "G-SDPF5P5TH6"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+        let activeData = null;
+
+        // Dhagaysiga safka Live-ka ah ee Abaal Manager
+        db.ref('live_queue').on('value', (snap) => {
+            const data = snap.val();
+            const div = document.getElementById('active-patient');
+            
+            if (data) {
+                activeData = data; 
+                div.innerHTML = "BUKAANKA: " + activeData.name + " (Tikidh: " + (activeData.num || 'N/A') + ") - Qolka: " + (activeData.room || 'N/A');
+                div.style.border = "1px solid #34d399";
+            } else {
+                div.innerHTML = "Ma jiro bukaan hadda sugaya.";
+                div.style.background = "rgba(239, 68, 68, 0.1)";
+                div.style.color = "#f87171";
+                div.style.border = "1px solid rgba(239, 68, 68, 0.3)";
+                activeData = null;
+            }
+        });
+
+        function generateReport() {
+            if (!activeData) { alert("Sug inta bukaan laga soo dirayo Reception-ka!"); return; }
+            const meds = document.getElementById('pMedication').value;
+            if (!meds) { alert("Fadlan qor daawooyinka!"); return; }
+
+            // Buuxi warqadda Print-ka
+            document.getElementById('prName').innerText = activeData.name;
+            document.getElementById('prRef').innerText = activeData.num || "N/A";
+            document.getElementById('prDate').innerText = new Date().toLocaleDateString();
+            document.getElementById('prAgeSex').innerText = document.getElementById('pAge').value + " / " + document.getElementById('pSex').value;
+            document.getElementById('prWeight').innerText = document.getElementById('pWeight').value + " kg";
+            document.getElementById('prBP').innerText = document.getElementById('pBP').value;
+            document.getElementById('prDiag').innerText = document.getElementById('pDiagnosis').value;
+            document.getElementById('prMeds').innerText = meds;
+            document.getElementById('prNote').innerText = document.getElementById('pNote').value;
+            document.getElementById('docNameDisplay').innerText = "Dr. " + (activeData.doctor || "Duty Doctor");
+
+            // Kaydi History-ga weyn ee Abaal
+            db.ref('patient_history').push({
+                name: activeData.name,
+                num: activeData.num,
+                meds: meds,
+                diagnosis: document.getElementById('pDiagnosis').value,
+                date: new Date().toLocaleDateString(),
+                doctor: activeData.doctor || "Duty Doctor"
+            });
+
+            // Ka saar safka TV-ga maadaama la daweeyay
+            db.ref('live_queue').remove();
+
+            window.print();
+            setTimeout(() => { location.reload(); }, 1000);
+        }
+    </script>
+</body>
+</html>
